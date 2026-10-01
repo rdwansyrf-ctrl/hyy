@@ -1,0 +1,110 @@
+// DOBBLE BACKEND V1 - Prisma Schema for PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppType {
+  R
+  R1
+}
+
+enum PairingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  devices       Device[]
+
+  @@map("users")
+}
+
+model Device {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  deviceId    String    @unique @map("device_id")
+  deviceName  String    @map("device_name")
+  platform    String    @default("Android")
+  appType     AppType   @map("app_type")
+  lastSeen    DateTime  @default(now()) @map("last_seen")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions    Session[]
+
+  // Relations for pairings
+  rPairings   Pairing[] @relation("RPairings")
+  r1Pairings  Pairing[] @relation("R1Pairings")
+
+  // Location history
+  locations   LocationHistory[]
+
+  @@index([userId])
+  @@index([deviceId])
+  @@map("devices")
+}
+
+model Pairing {
+  id           String        @id @default(uuid())
+  rDeviceId    String        @map("r_device_id")
+  r1DeviceId   String        @map("r1_device_id")
+  status       PairingStatus @default(PENDING)
+  requestedAt  DateTime      @default(now()) @map("requested_at")
+  approvedAt   DateTime?     @map("approved_at")
+  rejectedAt   DateTime?     @map("rejected_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  rDevice      Device        @relation("RPairings", fields: [rDeviceId], references: [deviceId], onDelete: Cascade)
+  r1Device     Device        @relation("R1Pairings", fields: [r1DeviceId], references: [deviceId], onDelete: Cascade)
+
+  @@unique([rDeviceId, r1DeviceId])
+  @@index([rDeviceId])
+  @@index([r1DeviceId])
+  @@index([status])
+  @@map("pairings")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  deviceId  String   @map("device_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  device    Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model LocationHistory {
+  id        String   @id @default(uuid())
+  deviceId  String   @map("device_id")
+  latitude  Float
+  longitude Float
+  accuracy  Float    @default(0.0)
+  timestamp BigInt   @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  device    Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([createdAt])
+  @@map("location_history")
+}

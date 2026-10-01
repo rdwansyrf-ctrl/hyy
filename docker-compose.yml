@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------
+  # PostgreSQL Database Service
+  # ----------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: dobble-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dobble_user
+      POSTGRES_PASSWORD: dobble_secure_password
+      POSTGRES_DB: dobble_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dobble_user -d dobble_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------
+  # DOBBLE BACKEND V1 (API Gateway & WebSocket Server)
+  # ----------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dobble-backend-v1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://dobble_user:dobble_secure_password@postgres:5432/dobble_db?schema=public
+      JWT_SECRET: dobble_prod_super_secret_jwt_key_987654321
+      JWT_REFRESH_SECRET: dobble_prod_super_secret_refresh_key_123456789
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: "*"
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_REQUESTS: 120
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,8 @@
+{
+  "name": "DOBBLE BACKEND V1",
+  "description": "High-performance Node.js & WebSocket signaling backend for DOBBLE R and DOBBLE R1 device pairing, live tracking, and WebRTC streaming",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
